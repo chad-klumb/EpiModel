@@ -46,8 +46,7 @@ sim_nets <- function(x, nw, nsteps, control) {
 #' @keywords netUtils internal
 #'
 resim_nets <- function(dat, at) {
-
-  # Variables
+  #Variables
   tergmLite <- get_control(dat, "tergmLite")
   save.nwstats <- get_control(dat, "save.nwstats")
   resimulate.network <- get_control(dat, "resimulate.network")
@@ -82,7 +81,7 @@ resim_nets <- function(dat, at) {
     }
 
     # Network simulation
-    if (anyActive > 0 & resimulate.network == TRUE) {
+    if (anyActive > 0 & resimulate.network) {
       suppressWarnings(
         dat$nw[[1]] <- simulate(dat$nw[[1]],
                            formation = nwparam$formation,
@@ -105,13 +104,19 @@ resim_nets <- function(dat, at) {
   }
 
   # networkLite/tergmLite Method
-  if (tergmLite == TRUE & resimulate.network == TRUE) {
+  if (tergmLite == TRUE) {
     dat <- tergmLite::updateModelTermInputs(dat)
-    dat$el[[1]] <- tergmLite::simulate_network(p = dat$p[[1]],
-                                               el = dat$el[[1]],
-                                               coef.form = nwparam$coef.form,
-                                               coef.diss = nwparam$coef.diss$coef.adj,
-                                               save.changes = TRUE)
+    rv <- tergmLite::simulate_network(state = dat$p[[1]]$state,
+                                      coef = c(nwparam$coef.form, nwparam$coef.diss$coef.adj),
+                                      control = dat$control$MCMC_control[[1]],
+                                      save.changes = TRUE)
+    dat$el[[1]] <- rv$el
+    dat$p[[1]]$state$el <- rv$state$el
+    dat$p[[1]]$state_mon$el <- rv$state$el
+
+    if (dat$control$extract.summary.stats == TRUE) {
+      dat$stats$summstats[[1]] <- rbind(dat$stats$summstats[[1]], c(summary(dat$p[[1]]$state), if(nparam(dat$p[[1]]$state_mon, canonical = TRUE) > 0) summary(dat$p[[1]]$state_mon)))
+    }
   }
 
   return(dat)
@@ -140,7 +145,7 @@ edges_correct <- function(dat, at) {
   if (resimulate.network == TRUE) {
 
     if (groups == 1) {
-      index <- at - 1
+      index <- at-1
       old.num <- get_epi(dat, "num", index)
       new.num <- sum(active == 1)
       dat$nwparam[[1]]$coef.form[1] <- dat$nwparam[[1]]$coef.form[1] +
@@ -148,7 +153,7 @@ edges_correct <- function(dat, at) {
         log(new.num)
     }
     if (groups == 2) {
-      index <- at - 1
+      index <- at-1
       group <- get_attr(dat, "group")
       old.num.g1 <- get_epi(dat, "num", index)
       old.num.g2 <- get_epi(dat, "num.g2", index)

@@ -28,7 +28,6 @@ initialize.net <- function(x, param, init, control, s) {
     dat$stats <- list()
     dat$temp <- list()
 
-
     # Initial Network Simulation ----------------------------------------------
     nw <- simulate(x$fit, basis = x$fit$newnetwork,
                    control = control$set.control.ergm)
@@ -63,23 +62,27 @@ initialize.net <- function(x, param, init, control, s) {
 
     ## Store current proportions of attr
     nwterms <- get_network_term_attr(nw)
-    if (!is.null(nwterms)) {
+    if (!is.null(nwterms)){
       dat$temp$nwterms <- nwterms
       dat$temp$t1.tab <- get_attr_prop(dat, nwterms)
     }
-
-    ## Infection Status and Time
-    dat <- init_status.net(dat)
 
     # Conversions for tergmLite
     if (control$tergmLite == TRUE) {
       dat <- tergmLite::init_tergmLite(dat)
     }
 
+    ## Infection Status and Time
+    dat <- init_status.net(dat)
+
 
     # Summary Stats -----------------------------------------------------------
     dat <- do.call(control[["prevalence.FUN"]],list(dat, at = 1))
 
+    dat$stats$summstats <- list()
+    if (dat$control$extract.summary.stats == TRUE) {
+      dat$stats$summstats[[1]] <- c(summary(dat$p[[1]]$state), if(nparam(dat$p[[1]]$state_mon, canonical = TRUE) > 0) summary(dat$p[[1]]$state_mon))
+    }
 
     # Restart/Reinit Simulations ----------------------------------------------
   } else if (control$start > 1) {
@@ -142,7 +145,7 @@ init_status.net <- function(dat) {
   vital <- get_param(dat, "vital")
   groups <- get_param(dat, "groups")
   status.vector <- get_init(dat, "status.vector", override.null.error = TRUE)
-  if (type %in% c("SIS", "SIR") && !is.null(type)) {
+  if (type %in% c("SIS", "SIR")){
     rec.rate <- get_param(dat, "rec.rate")
   }
   if (vital == TRUE) {
@@ -151,7 +154,7 @@ init_status.net <- function(dat) {
 
   # Variables ---------------------------------------------------------------
   i.num <- get_init(dat, "i.num", override.null.error = TRUE)
-  if (type  == "SIR" && is.null(status.vector) && !is.null(type)) {
+  if (type  == "SIR" & is.null(status.vector)){
     r.num <- get_init(dat, "r.num")
   }
 
@@ -160,7 +163,7 @@ init_status.net <- function(dat) {
   if (groups == 2) {
     group <- get_attr(dat, "group")
     i.num.g2 <- get_init(dat, "i.num.g2")
-    if (type  == "SIR" && is.null(status.vector) && !is.null(type)) {
+    if (type  == "SIR" & is.null(status.vector)) {
       r.num.g2 <- get_init(dat, "r.num.g2", override.null.error = TRUE)
     }
   } else {
@@ -210,7 +213,7 @@ init_status.net <- function(dat) {
 
   # Infection Time ----------------------------------------------------------
   ## Set up inf.time vector
-  if (!is.null(type)) {
+  if(!is.null(type)){
     idsInf <- which(status == "i")
     infTime <- rep(NA, length(status))
     infTime.vector <- get_init(dat, "infTime.vector", override.null.error = TRUE)
@@ -238,11 +241,6 @@ init_status.net <- function(dat) {
       }
     }
 
-    dat <- set_attr(dat, "infTime", infTime)
-  } else {
-    infTime <- rep(NA, num)
-    idsInf <- idsInf <- which(status == "i")
-    infTime[idsInf] <- 1
     dat <- set_attr(dat, "infTime", infTime)
   }
 
